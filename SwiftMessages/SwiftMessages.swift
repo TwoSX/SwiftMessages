@@ -206,6 +206,17 @@ open class SwiftMessages {
          */
         case blur(style: UIBlurEffect.Style, alpha: CGFloat, interactive: Bool)
 
+        /**
+         Dim the background behind the message view using a variable blur effect with
+         the given radius and alpha
+
+         - `radius`: The radius of the blur
+         - `alpha`: The alpha level of the blur
+         - `interactive`: Specifies whether or not tapping the
+         dimmed area dismisses the message view.
+         */
+        case variableBlur(radius: CGFloat, alpha: CGFloat, interactive: Bool)
+
         public var interactive: Bool {
             switch self {
             case .gray(let interactive):
@@ -214,6 +225,8 @@ open class SwiftMessages {
                 return interactive
             case .blur (_, _, let interactive):
                 return interactive
+            case .variableBlur(_, _, let interactive):
+                return interactive
             case .none:
                 return false
             }
@@ -221,7 +234,7 @@ open class SwiftMessages {
 
         public var modal: Bool {
             switch self {
-            case .gray, .color, .blur:
+            case .gray, .color, .blur, .variableBlur:
                 return true
             case .none:
                 return false

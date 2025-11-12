@@ -167,6 +167,14 @@ class Presenter: NSObject {
             }
         }
 
+        func variableBlur(radius: CGFloat, alpha: CGFloat) {
+            let blurView = VariableBlurUIView(maxBlurRadius: 1, alpha: alpha)
+            maskingView.backgroundView = blurView
+            UIView.animate(withDuration: 0.3) {
+                blurView.maxBlurRadius = radius
+            }
+        }
+
         let context = animationContext()
         animator.show(context: context) { (completed) in
             completion(completed)
@@ -180,6 +188,8 @@ class Presenter: NSObject {
             dim(color)
         case .blur(let style, let alpha, _):
             blur(style: style, alpha: alpha)
+        case .variableBlur(let radius, let alpha, _):
+            variableBlur(radius: radius, alpha: alpha)
         }
     }
 
@@ -228,6 +238,14 @@ class Presenter: NSObject {
             }, completion: nil)
         }
         
+        func unVariableBlur() {
+            guard let blurView = maskingView.backgroundView as? VariableBlurUIView else { return }
+            UIView.animate(withDuration: 0.3, delay: 0, options: .beginFromCurrentState, animations: {
+                blurView.maxBlurRadius = 0
+                blurView.alpha = 0
+            }, completion: nil)
+        }
+        
         switch config.dimMode {
         case .none:
             break
@@ -237,6 +255,8 @@ class Presenter: NSObject {
             undim()
         case .blur:
             unblur()
+        case .variableBlur:
+            unVariableBlur()
         }
     }
 
@@ -433,5 +453,3 @@ class Presenter: NSObject {
         installAccessibility()
     }
 }
-
-

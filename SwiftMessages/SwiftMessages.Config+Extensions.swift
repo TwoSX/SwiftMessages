@@ -33,7 +33,7 @@ extension SwiftMessages.Config {
     var shouldBecomeKeyWindow: Bool {
         if let becomeKeyWindow = becomeKeyWindow { return becomeKeyWindow }
         switch dimMode {
-        case .gray, .color, .blur:
+        case .gray, .color, .blur, .variableBlur:
             // Should become key window in modal presentation style
             // for proper VoiceOver handling.
             return true
