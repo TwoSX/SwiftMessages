@@ -15,26 +15,33 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
     // MARK: - API
 
     public let id: String
+    
+    /// 是否忽略 UIHostingController 的安全区域限制，让 SwiftUI 内容可以使用 .edgesIgnoringSafeArea() 等修饰符来控制。
+    /// 注意：此属性仅在 iOS 16.4+ 上生效。
+    public let ignoresSafeAreaRegions: Bool
 
-    public init(id: String, content: Content) {
+    public init(id: String, content: Content, ignoresSafeAreaRegions: Bool = false) {
         self.id = id
         self.content = { _ in content }
+        self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
         super.init(frame: .zero)
         backgroundColor = .clear
     }
 
     public init<Message>(
         message: Message,
+        ignoresSafeAreaRegions: Bool = false,
         @ViewBuilder content: @escaping (Message, MessageGeometryProxy) -> Content
     ) where Message: Identifiable {
         self.id = message.id
         self.content = { geom in content(message, geom) }
+        self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
         super.init(frame: .zero)
         backgroundColor = .clear
     }
 
-    convenience public init<Message>(message: Message) where Message: MessageViewConvertible, Message.Content == Content {
-        self.init(id: message.id, content: message.asMessageView() )
+    convenience public init<Message>(message: Message, ignoresSafeAreaRegions: Bool = false) where Message: MessageViewConvertible, Message.Content == Content {
+        self.init(id: message.id, content: message.asMessageView(), ignoresSafeAreaRegions: ignoresSafeAreaRegions)
     }
 
     // MARK: - Constants
@@ -89,6 +96,7 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
         let insets = superview.safeAreaInsets
         let ltr = superview.effectiveUserInterfaceLayoutDirection == .leftToRight
         let proxy = MessageGeometryProxy(
+            fullSize: size,
             size: CGSize(
                 width: size.width - insets.left - insets.right,
                 height: size.height - insets.top - insets.bottom
@@ -102,6 +110,13 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
         )
         let hostVC = UIHostingController(rootView: content(proxy))
         self.hostVC = hostVC
+        // 禁用 UIHostingController 的安全区域限制，让 SwiftUI 内容自己控制
+        // 注意：safeAreaRegions 属性仅在 iOS 16.4+ 上可用
+        if ignoresSafeAreaRegions {
+            if #available(iOS 16.4, *) {
+                hostVC.safeAreaRegions = []
+            }
+        }
         hostVC.loadViewIfNeeded()
         installContentView(hostVC.view)
         hostVC.view.backgroundColor = .clear

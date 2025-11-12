@@ -14,9 +14,10 @@ public extension View {
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
         swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false,
         @ViewBuilder messageContent: @escaping (Message) -> MessageContent
     ) -> some View where Message: Equatable & Identifiable, MessageContent: View {
-        swiftMessage(message: message, config: config, swiftMessages: swiftMessages) { message, _ in
+        swiftMessage(message: message, config: config, swiftMessages: swiftMessages, ignoresSafeAreaRegions: ignoresSafeAreaRegions) { message, _ in
             messageContent(message)
         }
     }
@@ -29,6 +30,7 @@ public extension View {
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
         swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false,
         @ViewBuilder messageContent: @escaping (Message, MessageGeometryProxy) -> MessageContent
     ) -> some View where Message: Equatable & Identifiable, MessageContent: View {
         modifier(
@@ -36,6 +38,7 @@ public extension View {
                 message: message,
                 config: config,
                 swiftMessages: swiftMessages,
+                ignoresSafeAreaRegions: ignoresSafeAreaRegions,
                 messageContent: messageContent
             )
         )
@@ -46,9 +49,10 @@ public extension View {
     func swiftMessage<Message>(
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
-        swiftMessages: SwiftMessages? = nil
+        swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false
     ) -> some View where Message: MessageViewConvertible {
-        swiftMessage(message: message, config: config, swiftMessages: swiftMessages) { content in
+        swiftMessage(message: message, config: config, swiftMessages: swiftMessages, ignoresSafeAreaRegions: ignoresSafeAreaRegions) { content in
             content.asMessageView()
         }
     }
@@ -63,11 +67,13 @@ private struct SwiftMessageModifier<Message, MessageContent>: ViewModifier where
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
         swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false,
         @ViewBuilder messageContent: @escaping (Message) -> MessageContent
     ) {
         _message = message
         self.config = config
         self.swiftMessages = swiftMessages
+        self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
         self.messageContent = { message, _ in
             messageContent(message)
         }
@@ -77,22 +83,26 @@ private struct SwiftMessageModifier<Message, MessageContent>: ViewModifier where
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
         swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false,
         @ViewBuilder messageContent: @escaping (Message, MessageGeometryProxy) -> MessageContent
     ) {
         _message = message
         self.config = config
         self.swiftMessages = swiftMessages
+        self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
         self.messageContent = messageContent
     }
 
     fileprivate init(
         message: Binding<Message?>,
         config: SwiftMessages.Config? = nil,
-        swiftMessages: SwiftMessages? = nil
+        swiftMessages: SwiftMessages? = nil,
+        ignoresSafeAreaRegions: Bool = false
     ) where Message: MessageViewConvertible, Message.Content == MessageContent {
         _message = message
         self.config = config
         self.swiftMessages = swiftMessages
+        self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
         self.messageContent = { message, _ in
             message.asMessageView()
         }
@@ -105,6 +115,7 @@ private struct SwiftMessageModifier<Message, MessageContent>: ViewModifier where
     @Binding private var message: Message?
     private let config: SwiftMessages.Config?
     private let swiftMessages: SwiftMessages?
+    private let ignoresSafeAreaRegions: Bool
     @ViewBuilder private let messageContent: (Message, MessageGeometryProxy) -> MessageContent
 
     // MARK: - Body
@@ -116,7 +127,7 @@ private struct SwiftMessageModifier<Message, MessageContent>: ViewModifier where
                 let hideAll: @MainActor () -> Void = swiftMessages?.hideAll ?? SwiftMessages.hideAll
                 switch message {
                 case let message?:
-                    let view = MessageHostingView(message: message, content: messageContent)
+                    let view = MessageHostingView(message: message, ignoresSafeAreaRegions: ignoresSafeAreaRegions, content: messageContent)
                     var config = config ?? swiftMessages?.defaultConfig ?? SwiftMessages.defaultConfig
                     config.eventListeners.append { event in
                         if case .didHide = event, event.id == self.message?.id {
