@@ -10,7 +10,7 @@ import UIKit
 
 /// A rudimentary hosting view for SwiftUI messages.
 @available(iOS 14.0, *)
-public class MessageHostingView<Content>: UIView, Identifiable where Content: View {
+public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable where Content: View {
 
     // MARK: - API
 
@@ -19,11 +19,19 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
     /// 是否忽略 UIHostingController 的安全区域限制，让 SwiftUI 内容可以使用 .edgesIgnoringSafeArea() 等修饰符来控制。
     /// 注意：此属性仅在 iOS 16.4+ 上生效。
     public let ignoresSafeAreaRegions: Bool
+    
+    // MARK: - MarginAdjustable
+    
+    public var layoutMarginAdditions: UIEdgeInsets = .zero
+    public var collapseLayoutMarginAdditions: Bool = false
+    public var respectSafeArea: Bool = false
+    public var bounceAnimationOffset: CGFloat = 0 // 不使用弹跳动画偏移
 
     public init(id: String, content: Content, ignoresSafeAreaRegions: Bool = false) {
         self.id = id
         self.content = { _ in content }
         self.ignoresSafeAreaRegions = ignoresSafeAreaRegions
+        self.bounceAnimationOffset = ignoresSafeAreaRegions ? 0 : 5
         super.init(frame: .zero)
         backgroundColor = .clear
     }
@@ -120,7 +128,6 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
         hostVC.loadViewIfNeeded()
         installContentView(hostVC.view)
         hostVC.view.backgroundColor = .clear
-
     }
 
     // MARK: - Configuration
@@ -128,11 +135,35 @@ public class MessageHostingView<Content>: UIView, Identifiable where Content: Vi
     private func installContentView(_ contentView: UIView) {
         contentView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(contentView)
-        NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: topAnchor),
-            contentView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            contentView.leftAnchor.constraint(equalTo: leftAnchor),
-            contentView.rightAnchor.constraint(equalTo: rightAnchor),
-        ])
+        
+        // 当 ignoresSafeAreaRegions 为 true 时，让内容根据其 intrinsic size 自由布局
+        // 这样 SwiftUI 中的 .padding() 等修饰符可以正确工作
+        if ignoresSafeAreaRegions {
+            // 左右约束使用等式，确保宽度正确
+            let leadingConstraint = contentView.leadingAnchor.constraint(equalTo: leadingAnchor)
+            let trailingConstraint = contentView.trailingAnchor.constraint(equalTo: trailingAnchor)
+            
+            // 顶部和底部使用等式约束，让 contentView 撑起 MessageHostingView 的大小
+            let topConstraint = contentView.topAnchor.constraint(equalTo: topAnchor)
+            let bottomConstraint = contentView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            
+            NSLayoutConstraint.activate([
+                leadingConstraint,
+                trailingConstraint,
+                topConstraint,
+                bottomConstraint,
+            ])
+            
+            // 设置内容压缩阻力和拥抱优先级，防止被压缩
+            contentView.setContentCompressionResistancePriority(.required, for: .vertical)
+            contentView.setContentHuggingPriority(.required, for: .vertical)
+        } else {
+            NSLayoutConstraint.activate([
+                contentView.topAnchor.constraint(equalTo: topAnchor),
+                contentView.bottomAnchor.constraint(equalTo: bottomAnchor),
+                contentView.leftAnchor.constraint(equalTo: leftAnchor),
+                contentView.rightAnchor.constraint(equalTo: rightAnchor),
+            ])
+        }
     }
 }
