@@ -58,6 +58,9 @@ public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable
 
     private var hostVC: UIHostingController<Content>?
     private let content: (MessageGeometryProxy) -> Content
+    private var lastKnownSize: CGSize = .zero
+    private var isUpdatingLayout: Bool = false
+    private var pendingLayoutUpdate: DispatchWorkItem?
 
     // MARK: - Lifecycle
 
@@ -100,9 +103,11 @@ public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable
 
     public override func didMoveToSuperview() {
         guard let superview = self.superview else { return }
+        
         let size = superview.bounds.size
         let insets = superview.safeAreaInsets
         let ltr = superview.effectiveUserInterfaceLayoutDirection == .leftToRight
+        
         let proxy = MessageGeometryProxy(
             fullSize: size,
             size: CGSize(
@@ -116,8 +121,15 @@ public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable
                 trailing: ltr ? insets.right : insets.left
             )
         )
+        
         let hostVC = UIHostingController(rootView: content(proxy))
         self.hostVC = hostVC
+        
+        // iOS 16+ 使用 sizingOptions 来让内容自动调整大小
+        if #available(iOS 16.0, *) {
+            hostVC.sizingOptions = .intrinsicContentSize
+        }
+        
         // 禁用 UIHostingController 的安全区域限制，让 SwiftUI 内容自己控制
         // 注意：safeAreaRegions 属性仅在 iOS 16.4+ 上可用
         if ignoresSafeAreaRegions {
@@ -125,9 +137,57 @@ public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable
                 hostVC.safeAreaRegions = []
             }
         }
+        
         hostVC.loadViewIfNeeded()
         installContentView(hostVC.view)
         hostVC.view.backgroundColor = .clear
+    }
+    
+    public override var intrinsicContentSize: CGSize {
+        hostVC?.view.intrinsicContentSize ?? super.intrinsicContentSize
+    }
+    
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        // 如果正在更新布局，不要触发新的布局更新，避免循环
+        guard !isUpdatingLayout else { return }
+        
+        // 检查内容尺寸是否发生变化
+        if let contentView = hostVC?.view {
+            let newSize = contentView.intrinsicContentSize
+            // 添加一个小的阈值（1.0 point），避免浮点数精度问题导致的无限循环
+            let heightDiff = abs(newSize.height - lastKnownSize.height)
+            let widthDiff = abs(newSize.width - lastKnownSize.width)
+            
+            if (heightDiff > 1.0 || widthDiff > 1.0) && newSize.height != UIView.noIntrinsicMetric {
+                lastKnownSize = newSize
+                invalidateIntrinsicContentSize()
+                
+                // 取消之前的待处理更新
+                pendingLayoutUpdate?.cancel()
+                
+                // 延迟一点点再触发布局更新，让 SwiftUI 的动画稳定下来
+                let workItem = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // 如果已经在更新中，跳过
+                    guard !self.isUpdatingLayout else { return }
+                    
+                    self.isUpdatingLayout = true
+                    
+                    UIView.animate(withDuration: 0.3, animations: {
+                        self.superview?.layoutIfNeeded()
+                    }, completion: { [weak self] _ in
+                        self?.isUpdatingLayout = false
+                    })
+                }
+                
+                pendingLayoutUpdate = workItem
+                // 使用很短的延迟，让当前的布局周期完成
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
+            }
+        }
     }
 
     // MARK: - Configuration
