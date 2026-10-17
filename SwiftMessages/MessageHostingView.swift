@@ -10,7 +10,7 @@ import UIKit
 
 /// A rudimentary hosting view for SwiftUI messages.
 @available(iOS 14.0, *)
-public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable where Content: View {
+public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable, ContentSizeSynchronizing where Content: View {
 
     // MARK: - API
 
@@ -191,6 +191,23 @@ public class MessageHostingView<Content>: UIView, Identifiable, MarginAdjustable
     }
 
     // MARK: - Configuration
+
+    func synchronizeContentSize() -> Bool {
+        guard let contentView = hostVC?.view else { return false }
+        // Propagate the new width to the hosting view first; it may not have been laid out yet.
+        layoutIfNeeded()
+        contentView.layoutIfNeeded()
+        let newSize = contentView.intrinsicContentSize
+        guard newSize.height != UIView.noIntrinsicMetric,
+              abs(newSize.height - lastKnownSize.height) > 1.0
+                || abs(newSize.width - lastKnownSize.width) > 1.0 else { return false }
+        // Take over from the deferred update in `layoutSubviews`; the caller animates the change.
+        pendingLayoutUpdate?.cancel()
+        pendingLayoutUpdate = nil
+        lastKnownSize = newSize
+        invalidateIntrinsicContentSize()
+        return true
+    }
 
     private func installContentView(_ contentView: UIView) {
         contentView.translatesAutoresizingMaskIntoConstraints = false

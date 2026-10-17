@@ -367,6 +367,7 @@ class Presenter: NSObject {
 
         func installMaskingView(containerView: UIView) {
             maskingView.translatesAutoresizingMaskIntoConstraints = false
+            maskingView.divisionAvoidance = config.divisionAvoidance
             if let nav = presentationContext.viewControllerValue() as? UINavigationController {
                 containerView.insertSubview(maskingView, belowSubview: nav.navigationBar)
             } else if let tab = presentationContext.viewControllerValue() as? UITabBarController {

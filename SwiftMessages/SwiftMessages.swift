@@ -46,6 +46,28 @@ open class SwiftMessages {
     }
 
     /**
+     Specifies how the message view avoids an active vertical division region,
+     such as the fold of a partially folded iPhone Duo in landscape. When avoiding,
+     the message view is horizontally confined to one side of the fold, similar to
+     how system sheets move away from the fold. Horizontal division regions
+     (for example, the fold in portrait) are ignored.
+
+     Requires iOS 27.1 and has no effect otherwise. Applies to the `.top`, `.bottom`
+     and `.center` presentation styles.
+     */
+    public enum DivisionAvoidance {
+
+        /// The message view spans the container, ignoring division regions.
+        case disabled
+
+        /// The message view is placed on the leading side of the fold.
+        case leading
+
+        /// The message view is placed on the trailing side of the fold.
+        case trailing
+    }
+
+    /**
      Specifies how the container for presenting the message view
      is selected.
     */
@@ -283,6 +305,12 @@ open class SwiftMessages {
          of the selected presentation container. The default is `.Top`.
          */
         public var presentationStyle = PresentationStyle.top
+
+        /**
+         Specifies how the message view avoids an active vertical division region
+         (the fold of a partially folded device). The default is `.disabled`.
+         */
+        public var divisionAvoidance = DivisionAvoidance.disabled
 
         /**
          Specifies how the container for presenting the message view

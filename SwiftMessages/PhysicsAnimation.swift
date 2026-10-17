@@ -110,9 +110,10 @@ public class PhysicsAnimation: NSObject, Animator {
             .with(priority: UILayoutPriority(200))
             .isActive = true
         }
+        let horizontalArea = (container as? MaskingView)?.messageAreaLayoutGuide
         NSLayoutConstraint.activate([
-            view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            view.leadingAnchor.constraint(equalTo: horizontalArea?.leadingAnchor ?? container.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: horizontalArea?.trailingAnchor ?? container.trailingAnchor),
             // Don't allow the message to spill outside of the top or bottom of the container.
             view.topAnchor.constraint(greaterThanOrEqualTo: container.topAnchor),
             view.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor),

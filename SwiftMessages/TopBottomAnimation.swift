@@ -84,8 +84,9 @@ public class TopBottomAnimation: NSObject, Animator {
         }
         view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(view)
-        view.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
-        view.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+        let horizontalArea = (container as? MaskingView)?.messageAreaLayoutGuide
+        view.leadingAnchor.constraint(equalTo: horizontalArea?.leadingAnchor ?? container.leadingAnchor).isActive = true
+        view.trailingAnchor.constraint(equalTo: horizontalArea?.trailingAnchor ?? container.trailingAnchor).isActive = true
         switch style {
         case .top:
             view.topAnchor.constraint(equalTo: container.topAnchor, constant: -bounceOffset).with(priority: UILayoutPriority(200)).isActive = true
